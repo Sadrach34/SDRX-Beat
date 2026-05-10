@@ -1,0 +1,12 @@
+ONLINE_STATIONS = [
+    ("Bakend Sadrach",
+     "https://www.youtube.com/playlist?list=PLXuOK4h_ZtSbGV1FsT_nC0TRlf2EmwXEE"),
+    ("Heavy Hitters Sadrach 🥊",
+     "https://www.youtube.com/playlist?list=RDCLAK5uy_nVT2-bFfxplES7OQSLcnwlJqpsQ9gn0yY"),
+    ("Radio - Lofi Girl 🎧",
+     "https://play.streamafrica.net/lofiradio"),
+    ("YT - Relaxing Piano 🎹",
+     "https://youtu.be/6H7hXzjFoVU?si=nZTPREC9lnK1JJUG"),
+    ("didi love <3",
+     "https://youtube.com/playlist?list=PLa27SNGJ7x6KQE_7TKoSrTSgYKJ6Ok_k7&si=sNPwoKZGfrZoFQ7l"),
+]
