@@ -224,11 +224,6 @@ class App:
                 self.mode   = MODE_LOCAL
                 self.status = f"  ▶  Reanudado track local {idx + 1}"
 
-        elif kind == "shuffle":
-            mpv.play_local_shuffle()
-            self.mode   = MODE_LOCAL
-            self.status = "  🔀  Modo aleatorio reanudado"
-
     def _restore_online_ui(self, saved: dict):
         name = saved.get("station_name", "")
         url  = saved.get("url", "")

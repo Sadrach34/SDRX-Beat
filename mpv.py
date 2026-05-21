@@ -111,14 +111,6 @@ def play_local_ordered(files: list, start_index: int):
                      start_new_session=True)
 
 
-def play_local_shuffle():
-    """Shuffle everything under MUSIC_DIR."""
-    stop()
-    cmd = _base_cmd() + ["--shuffle", "--loop-playlist", MUSIC_DIR]
-    subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                     start_new_session=True)
-
-
 def play_online(url: str):
     """Play an online station/playlist in default order."""
     stop()

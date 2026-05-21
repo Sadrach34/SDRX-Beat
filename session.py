@@ -4,7 +4,7 @@ Created by Sadrach Garcia (SDRX) on 2026-05-09
 
 Saved to SESSION_FILE (JSON):
 {
-  "type":         "online" | "local" | "shuffle",
+  "type":         "online" | "local",
   "url":          "...",          # online only
   "station_name": "...",          # online only
   "pl_index":     3,              # playlist position (online)
@@ -84,11 +84,6 @@ def save_local(files: list, index: int):
         "time_pos":   float(time_pos) if time_pos is not None else 0.0,
     }
     _write(data)
-
-
-def save_shuffle():
-    """Called when shuffle mode is started."""
-    _write({"type": "shuffle"})
 
 
 def update_position():

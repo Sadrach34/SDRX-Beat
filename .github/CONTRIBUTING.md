@@ -1,44 +1,54 @@
-# Contributing to SDRX Dots 🌌
+# Contributing to SDRX-Beat 🎵
 
-First off, thank you for considering contributing to my Arch + Hyprland configuration! It’s people like you who make the Linux community awesome.
+Thank you for considering contributing to SDRX-Beat! Bug fixes, features, and docs are all welcome.
 
 ---
 
 ### 🛠️ How Can You Contribute?
 
-You can contribute in several ways:
-1.  **Bug Reports:** Found a broken script or a misconfigured keybind? Open an issue!
-2.  **Feature Requests:** Suggestions for new modules, Waybar layouts, or workflow improvements.
-3.  **Code Contributions:** Submit a Pull Request (PR) to fix bugs or add features.
-4.  **Documentation:** Improve the README or add comments to complex scripts.
+1. **Bug Reports:** Playback issues, crashes, IPC errors, session restore failures? Open an issue.
+2. **Feature Requests:** New keybinds, online source support, UI improvements.
+3. **Code Contributions:** Submit a Pull Request for fixes or features.
+4. **Documentation:** Improve the README or clarify keybindings/dependencies.
 
 ---
 
 ### 🚀 Pull Request Process
 
-To keep the repository clean and functional, please follow these steps:
-
-1.  **Fork the repo** and create your branch from `main`.
-2.  **Test your changes.** Since these are system-wide configs, ensure they don't break the basic functionality of Hyprland or the bar.
-3.  **Follow the Style Guide:**
-    *   Use **Conventional Commits** (e.g., `feat: add new scratchpad`, `fix: waybar battery icon`).
-    *   Keep scripts modular. If you add a new feature, try to put it in its own file or a logical section.
-4.  **Update Documentation:** If your change adds a new keybinding or dependency, please update the README or relevant documentation.
-5.  **Open the PR:** Provide a clear description of what you changed and why.
+1. **Fork the repo** and create your branch from `main`.
+2. **Test your changes.** Run `beat` and verify local playback, online stations, shuffle, and session restore still work.
+3. **Follow the Style Guide:**
+   - Use **Conventional Commits** (e.g., `feat: add seek bar`, `fix: mpv ipc timeout`).
+   - Keep modules focused: `mpv.py` for IPC, `app.py` for input/state, `draw.py` for rendering, `session.py` for persistence.
+4. **Update Documentation:** New keybind or dependency? Update the README table.
+5. **Open the PR:** Clear description of what changed and why.
 
 ---
 
 ### 🎨 Design Philosophy
 
-When contributing new UI elements (Waybar, Rofi, Kitty, etc.), keep in mind the **SDRX aesthetic**:
-*   **Minimalism:** Avoid unnecessary clutter.
-*   **Consistency:** Stick to the established color palette and rounded corners (15px).
-*   **Performance:** Favor lightweight tools and efficient Bash/Lua scripts.
+- **Terminal-first:** No GUI dependencies. Everything lives in the curses TUI.
+- **Minimal deps:** Core stack is `python3 + mpv + yt-dlp`. Don't add packages without good reason.
+- **Session integrity:** Changes to playback state must be reflected in `session.py` so state survives restarts.
+- **Non-blocking:** Heavy operations (yt-dlp fetch, IPC calls) must not freeze the draw loop. Use threads.
+
+---
+
+### 📁 Project Structure
+
+```
+SDRX-Beat/
+├── main.py        # entry point
+├── app.py         # TUI app class (input loop, state machine)
+├── draw.py        # curses rendering
+├── mpv.py         # mpv process + IPC management
+├── session.py     # session persistence
+├── config.py      # static config (paths, keycodes, stations)
+└── install.sh     # installer
+```
 
 ---
 
 ### ⚖️ Code of Conduct
 
-Be respectful and patient with others. We are all here to learn and build a better desktop experience.
-
-**Happy Ricing!** 🐧
+Be respectful. We're all here to build better tools.
