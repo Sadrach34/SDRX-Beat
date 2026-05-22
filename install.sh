@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SDRX-Beat installer
 # Created by Sadrach Garcia (SDRX) on 2026-05-09
-# Usage: bash install.sh [--update] [--uninstall]
+# Usage: bash install.sh [--install|--update|--repair|--uninstall|--help]
 
 set -euo pipefail
 
@@ -11,6 +11,16 @@ BIN_DIR="$HOME/.local/bin"
 REPO_URL="https://github.com/Sadrach34/SDRX-Beat.git"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MARKER="$INSTALL_DIR/.sdrx-beat-installed"
+PROJECT_FILES=(
+    main.py
+    app.py
+    draw.py
+    mpv.py
+    session.py
+    config.py
+    userdata.py
+    install.sh
+)
 
 # ── colors ─────────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GRN='\033[0;32m'; YLW='\033[0;33m'
@@ -22,6 +32,20 @@ info() { echo -e "${BLU}${BLD}[·]${RST} $*"; }
 warn() { echo -e "${YLW}${BLD}[!]${RST} $*"; }
 err()  { echo -e "${RED}${BLD}[✗]${RST} $*" >&2; }
 hdr()  { echo -e "\n${MAG}${BLD}── $* ──${RST}"; }
+
+usage() {
+    cat << EOF
+Usage: bash install.sh [option]
+
+Options:
+  --install, -i      Install SDRX-Beat
+  --update, -u, -up  Update from git and refresh launchers
+  --repair, -R       Reinstall files, launchers and shell integration
+  --uninstall, --remove
+                     Remove SDRX-Beat
+  --help, -h         Show this help
+EOF
+}
 
 # ── logo ───────────────────────────────────────────────────────────────────────
 print_logo() {
@@ -69,13 +93,12 @@ check_deps() {
 }
 
 # ── copy files ─────────────────────────────────────────────────────────────────
-install_files() {
+copy_project_files() {
     hdr "Installing files"
 
     mkdir -p "$INSTALL_DIR"
 
-    local files=(main.py app.py draw.py mpv.py session.py config.py)
-    for f in "${files[@]}"; do
+    for f in "${PROJECT_FILES[@]}"; do
         if [[ -f "$SCRIPT_DIR/$f" ]]; then
             cp "$SCRIPT_DIR/$f" "$INSTALL_DIR/$f"
             ok "Copied $f"
@@ -97,22 +120,52 @@ install_files() {
     ok "Installation marker created"
 }
 
+clone_install_tree() {
+    hdr "Installing files"
+    rm -rf "$INSTALL_DIR"
+    git clone "$REPO_URL" "$INSTALL_DIR"
+    ok "Cloned $REPO_URL"
+    touch "$MARKER"
+    ok "Installation marker created"
+}
+
+install_files() {
+    if [[ -d "$SCRIPT_DIR/.git" ]]; then
+        copy_project_files
+    else
+        clone_install_tree
+    fi
+}
+
 # ── git-based update ───────────────────────────────────────────────────────────
 update_files() {
     hdr "Updating SDRX-Beat"
 
     if [[ ! -d "$INSTALL_DIR/.git" ]]; then
-        warn "No .git found in $INSTALL_DIR — cloning fresh from GitHub"
-        rm -rf "$INSTALL_DIR"
-        git clone "$REPO_URL" "$INSTALL_DIR"
-        ok "Cloned $REPO_URL"
+        warn "No .git found in $INSTALL_DIR — reinstalling project files"
+        install_files
         return
     fi
 
-    info "Pulling latest changes…"
-    git -C "$INSTALL_DIR" pull --ff-only origin main 2>&1 | while IFS= read -r line; do
+    info "Fetching latest changes…"
+    git -C "$INSTALL_DIR" fetch --prune origin 2>&1 | while IFS= read -r line; do
         info "$line"
     done
+
+    local remote_head="origin/main"
+    if git -C "$INSTALL_DIR" show-ref --verify --quiet refs/remotes/origin/HEAD; then
+        remote_head="$(git -C "$INSTALL_DIR" symbolic-ref --short refs/remotes/origin/HEAD)"
+    fi
+
+    info "Rewriting installed files from $remote_head…"
+    git -C "$INSTALL_DIR" reset --hard "$remote_head" 2>&1 | while IFS= read -r line; do
+        info "$line"
+    done
+    git -C "$INSTALL_DIR" clean -fd 2>&1 | while IFS= read -r line; do
+        info "$line"
+    done
+
+    touch "$MARKER"
     ok "Update complete"
 }
 
@@ -127,8 +180,10 @@ install_commands() {
 # SDRX-Beat launcher
 INSTALL_DIR="\$HOME/.config/sdrx-beat"
 case "\${1:-}" in
-    --update|-u) exec bash "\$INSTALL_DIR/install.sh" --update ;;
-    --uninstall) exec bash "\$INSTALL_DIR/install.sh" --uninstall ;;
+    --update|-u|-up) exec bash "\$INSTALL_DIR/install.sh" --update ;;
+    --repair|-R) exec bash "\$INSTALL_DIR/install.sh" --repair ;;
+    --uninstall|--remove) exec bash "\$INSTALL_DIR/install.sh" --uninstall ;;
+    --help|-h) exec bash "\$INSTALL_DIR/install.sh" --help ;;
 esac
 exec python3 "\$INSTALL_DIR/main.py" "\$@"
 EOF
@@ -270,39 +325,91 @@ _inject_if_missing() {
     ok "Added shell integration to $config_file"
 }
 
+find_shell_config() {
+    local family="$1"
+    local zdotdir="${ZDOTDIR:-$HOME}"
+    local candidates=()
+
+    case "$family" in
+        zsh)
+            candidates=(
+                "$zdotdir/.zshrc"
+                "$zdotdir/.zprofile"
+                "$zdotdir/.zshenv"
+            )
+            ;;
+        bash)
+            candidates=(
+                "$HOME/.bashrc"
+                "$HOME/.bash_profile"
+                "$HOME/.profile"
+            )
+            ;;
+        fish)
+            candidates=(
+                "$HOME/.config/fish/config.fish"
+            )
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    local candidate
+    for candidate in "${candidates[@]}"; do
+        if [[ -f "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+manual_shell_snippet() {
+    case "$SHELL" in
+        *zsh*) _zsh_snippet ;;
+        *bash*) _bash_snippet ;;
+        *fish*) _fish_snippet ;;
+        *) _posix_snippet ;;
+    esac
+}
+
 install_shell_integration() {
     hdr "Shell integration"
 
     install_check_update_script
 
     local configured=0
+    local target_file
+    local -a families=()
 
-    # zsh
-    if [[ -f "$HOME/.zshrc" ]] || [[ "$SHELL" == *zsh* ]]; then
-        local zshrc="${ZDOTDIR:-$HOME}/.zshrc"
-        touch "$zshrc"
-        _inject_if_missing "$zshrc" "$(_zsh_snippet)"
-        configured=1
-    fi
+    case "$SHELL" in
+        *zsh*) families=(zsh bash fish) ;;
+        *bash*) families=(bash zsh fish) ;;
+        *fish*) families=(fish zsh bash) ;;
+        *) families=(zsh bash fish) ;;
+    esac
 
-    # bash
-    if [[ -f "$HOME/.bashrc" ]]; then
-        _inject_if_missing "$HOME/.bashrc" "$(_bash_snippet)"
-        configured=1
-    fi
+    local family
+    for family in "${families[@]}"; do
+        target_file="$(find_shell_config "$family" || true)"
+        [[ -n "$target_file" ]] || continue
 
-    # fish
-    if command -v fish &>/dev/null && [[ -d "$HOME/.config/fish" ]]; then
-        local fish_cfg="$HOME/.config/fish/config.fish"
-        touch "$fish_cfg"
-        _inject_if_missing "$fish_cfg" "$(_fish_snippet)"
+        case "$family" in
+            zsh) _inject_if_missing "$target_file" "$(_zsh_snippet)" ;;
+            bash) _inject_if_missing "$target_file" "$(_bash_snippet)" ;;
+            fish) _inject_if_missing "$target_file" "$(_fish_snippet)" ;;
+        esac
+
         configured=1
-    fi
+    done
 
     if [[ "$configured" -eq 0 ]]; then
-        warn "Could not detect shell config. Add this to your shell init file:"
+        warn "No existing shell config file was found."
+        info "Paste this into your shell init/shortcuts file for better integration:"
         echo ""
-        _posix_snippet
+        manual_shell_snippet
     fi
 }
 
@@ -332,12 +439,24 @@ do_uninstall() {
     ok "Uninstall complete"
 }
 
-# ── --update shortcut (called via sdrx-beat --update) ─────────────────────────
+do_repair() {
+    print_logo
+    hdr "Repairing SDRX-Beat"
+
+    install_files
+    install_commands
+    install_shell_integration
+
+    echo ""
+    ok "SDRX-Beat repaired."
+}
+
+# ── maintenance shortcuts ─────────────────────────────────────────────────────
 do_update() {
     print_logo
     update_files
     install_commands
-    install_check_update_script
+    install_shell_integration
     echo ""
     ok "SDRX-Beat updated."
 }
@@ -347,8 +466,16 @@ main() {
     print_logo
 
     case "${1:-}" in
-        --update|-u)
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        --update|-u|-up)
             do_update
+            exit 0
+            ;;
+        --repair|-R)
+            do_repair
             exit 0
             ;;
         --uninstall|--remove)
@@ -359,7 +486,7 @@ main() {
             : # fall through to full install
             ;;
         *)
-            echo "Usage: bash install.sh [--install | --update | --uninstall]"
+            usage
             exit 1
             ;;
     esac
@@ -389,7 +516,9 @@ main() {
     echo -e "${GRN}${BLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
     echo ""
     echo -e "  Launch with: ${CYN}${BLD}beat${RST}  or  ${CYN}${BLD}sdrx-beat${RST}"
-    echo -e "  Update with: ${CYN}${BLD}sdrx-beat --update${RST}"
+    echo -e "  Update with: ${CYN}${BLD}beat --update${RST}"
+    echo -e "  Repair with: ${CYN}${BLD}beat --repair${RST}"
+    echo -e "  Help with:   ${CYN}${BLD}beat --help${RST}"
     echo ""
     echo -e "  ${YLW}Reload your shell or run:${RST} ${CYN}source ~/.zshrc${RST}"
     echo ""

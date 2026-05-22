@@ -104,8 +104,9 @@ bash install.sh
 
 - Copies project to `~/.config/sdrx-beat`
 - Creates `~/.local/bin/beat` and `~/.local/bin/sdrx-beat` (system commands, no sudo needed)
-- Adds shell integration for **update notifications** on `yay` / `sudo pacman -Syu`
-- Detects your shell (zsh · bash · fish) and configures accordingly
+- Adds optional shell integration for **update notifications** on `yay` / `sudo pacman -Syu`
+- Detects common shell config files (zsh · bash · fish) and injects the integration only if an existing file is found
+- If no shell config file is found, it prints the snippet so you can paste it manually into your shell init/shortcuts file
 
 ### After install
 
@@ -114,12 +115,21 @@ beat         # launch SDRX-Beat
 sdrx-beat    # same
 ```
 
-### Update
+### Maintenance
 
 ```bash
-sdrx-beat --update
-# or
-cd ~/.config/sdrx-beat && git pull
+beat --update
+beat --repair
+beat --uninstall
+beat --help
+```
+
+Also supported:
+
+```bash
+beat -up
+beat -R
+beat -h
 ```
 
 You will also see an update notification automatically next time you run `yay` or `sudo pacman -Syu`.
